@@ -4,6 +4,12 @@ import logging
 import os
 from dotenv import load_dotenv
 
+# Try to import streamlit for secrets handling, fallback for local scripts
+try:
+    import streamlit as st
+except ImportError:
+    st = None
+
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,7 +23,15 @@ class GitHubClient:
     
     def __init__(self, token=None):
         self.session = requests.Session()
-        self.token = token or os.getenv("GITHUB_TOKEN")
+        
+        # 1. Try passed token
+        # 2. Try Streamlit Secrets (for live hosting)
+        # 3. Try Environment Variables (for local dev)
+        self.token = token
+        if not self.token and st and "GITHUB_TOKEN" in st.secrets:
+            self.token = st.secrets["GITHUB_TOKEN"]
+        if not self.token:
+            self.token = os.getenv("GITHUB_TOKEN")
         
         if self.token:
             self.session.headers.update({
